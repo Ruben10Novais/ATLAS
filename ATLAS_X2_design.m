@@ -3,53 +3,95 @@ close all;
 
 AR_range = 5:0.25:10; 
 b_range = 0.6:0.05:3;
+R_range = 0.12:0.01:0.5;
+N_blades_range = 2:1:4;
 
-NPoints = length(AR_range)*length(b_range);
-
-config=zeros(length(AR_range),length(b_range),9);
+config=zeros(length(AR_range),length(b_range),length(R_range),length(N_blades_range),15);
 
 for i=1:length(AR_range)
-    config(i,:,1)=AR_range(i);
+    config(i,:,:,:,1)=AR_range(i);
 end
 
 for i=1:length(b_range)
-    config(:,i,2)=b_range(i);
+    config(:,i,:,:,2)=b_range(i);
+end
+
+for i=1:length(R_range)
+    config(:,:,i,:,3)=R_range(i);
+end
+
+for i=1:length(N_blades_range)
+    config(:,:,:,i,4)=N_blades_range(i);
 end
 
 for i=1:length(AR_range)
     for j=1:length(b_range)
-        config(i,j,3) = ((config(1,j,2))^2)/config(i,1,1);
-        k = k_factor(config(i,1,1));
-        config(i,:,4) = k;
-        CD0 = CD0_estimate(config(i,1,1),config(1,j,2));
-        config(i,j,5) = CD0;
+        for k=1:length(R_range)
+            for l=1:length(N_blades_range)
+        config(i,j,k,l,5) = ((config(1,j,1,1,2))^2)/config(i,1,1,1,1);
+        kk = k_factor(config(i,1,1,1,1));
+        config(i,:,:,:,6) = kk;
+        CD0 = CD0_estimate(config(i,1,1,1,1),config(1,j,1,1,2));
+        config(i,j,k,l,7) = CD0;
         rho = 1.219; %density at 55m
-        W = weight_estimate(config(i,1,1),config(1,j,2));
-        config(i,j,6) = W;
-        WS = config(i,j,6)/config(i,j,3);
-        config(i,j,7) = WS;
+        W = weight_estimate(config(i,1,1,1,1),config(1,j,1,1,2));
+        config(i,j,k,l,8) = W;
+        WS = config(i,j,k,l,8)/config(i,j,k,l,5);
+        config(i,j,k,l,9) = WS;
+        A_rotor = 4*pi*config(1,1,k,1,3)^2;
+        config(i,j,k,l,10) = A_rotor;
+        DL = config(i,j,k,l,8)/config(i,j,k,l,10);
+        config(i,j,k,l,11) = DL;
         
         % Cruzeiro a 25 m/s
         
         eta_p_cruise = 1; 
-        PW_CRUISE = 1/eta_p_cruise * (  (rho * 25^3 * CD0 / 2 / (WS) ) + ( 2 * k * WS / rho / 25 ) );
+        PW_CRUISE = 1/eta_p_cruise * (  (rho * 25^3 * CD0 / 2 / (WS) ) + ( 2 * kk * WS / rho / 25 ) );
         
         % Curva a 2,5G
         
-        V_turn = Speed(k,WS,rho,CD0);
+        V_turn = Speed(kk,WS,rho,CD0);
         V = V_turn; %Velocity during the turn
         n = 2.5; %load factor
         eta_p_turn = 0.8; %nota: se a eficência fôr 1 e raio grande, esta curva coincide com a de cruise (mas a eficência será sempre um pouco menor a curvar)
         q = 0.5*rho*V^2; %dynamic pressure
-        PW_TURN = 1 / eta_p_turn * ( rho * V^3*CD0 / 2 / WS + 2 * k *n^2 / rho / V * WS );
+        PW_TURN = 1 / eta_p_turn * ( rho * V^3*CD0 / 2 / WS + 2 * kk *n^2 / rho / V * WS );
+        
+        % Subida vertical a 1 m/s
+        
+        rho2 = 1.222; %density média entre 0m e 50m
+        Omega = 900;
+        V_tip = Omega*config(1,1,k,1,3);
+        Solidity = config(1,1,1,l,4)*0.025/pi/config(1,1,k,1,3);
+        C_d_rotor = 0.02;
+        Ind_power_factor = 1.15;
+        
+        PW_climb = 1 - Ind_power_factor .* 1 ./ 2 + Ind_power_factor .* sqrt(1.^2 + 2 .* DL ./ rho2) ./ 2 + rho2 .* V_tip.^3 .* Solidity .* C_d_rotor ./ DL ./ 8;
+        
+        % Descida vertical a 2 m/s
+        
+        ind_hover_v = sqrt(W/2/rho2/A_rotor);
+        
+        if (-2*ind_hover_v <= -2)
+            PW_descent = -2 - Ind_power_factor .* (-2) ./ 2 - Ind_power_factor .* sqrt((-2).^2 - 2 .* DL ./ rho2) ./ 2 + rho2 .* V_tip.^3 .* Solidity .* C_d_rotor ./ DL ./ 8;
+        else
+            ind_desc_v = ind_hover_v*(Ind_power_factor -1.125*(-2)/ind_hover_v -1.372*(-2/ind_hover_v)^2 -1.718*(-2/ind_hover_v)^3 -0.655*(-2/ind_hover_v)^4);
+            PW_descent = (-2 + Ind_power_factor*ind_desc_v) + rho2 .* V_tip.^3 .* Solidity .* C_d_rotor ./ DL ./ 8;
+        end
         
         % Minimum power required
         
-        PW = max(PW_CRUISE,PW_TURN);
-        P = PW*W;
-        config(i,j,8) = PW;
-        config(i,j,9) = P;
-                
+        PW_f = max(PW_CRUISE,PW_TURN);
+        P_f = PW_f*W;
+        PW_v = max(PW_climb,PW_descent);
+        P_v = PW_v*W;
+        config(i,j,k,l,12) = PW_f;
+        config(i,j,k,l,13) = P_f;
+        config(i,j,k,l,14) = PW_v;
+        config(i,j,k,l,15) = P_v;
+        
+            end
+        end
     end
 end
 
