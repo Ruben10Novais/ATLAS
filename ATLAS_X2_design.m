@@ -2,7 +2,7 @@ clear;
 close all;
 
 AR_range = 5:0.25:10; 
-b_range = 1.5:0.05:3;
+b_range = 1.5:0.05:2.85;
 R_range = 0.1:0.01:0.5; %gama de raios de cada rotor
 N_blades_range = 2:1:4; %gama de número de blades de cada rotor
 
@@ -124,6 +124,22 @@ for i=1:length(AR_range)
         end
     end
 end
+
+fprintf('AR = %i\n',config(i_ideal,j_ideal,k_ideal,l_ideal,1));
+fprintf('Envergadura = %.2f m\n',config(i_ideal,j_ideal,k_ideal,l_ideal,2));
+fprintf('Raio de cada rotor = %.2f m\n',config(i_ideal,j_ideal,k_ideal,l_ideal,3));
+fprintf('Nº de hélices de cada rotor = %i\n',config(i_ideal,j_ideal,k_ideal,l_ideal,4));
+fprintf('Área da asa = %.4f m^2\n',config(i_ideal,j_ideal,k_ideal,l_ideal,5));
+fprintf('CD0 = %.4f\n',config(i_ideal,j_ideal,k_ideal,l_ideal,7));
+fprintf('Massa da aeronave (MTOM) = %.4f kg\n',config(i_ideal,j_ideal,k_ideal,l_ideal,8)/9.81);
+fprintf('Wing loading, W/S = %.4f N/m^2\n',config(i_ideal,j_ideal,k_ideal,l_ideal,9));
+fprintf('Área total dos 4 rotores = %.4f m^2\n',config(i_ideal,j_ideal,k_ideal,l_ideal,10));
+fprintf('Disk loading, W/A = %.4f N/m^2\n',config(i_ideal,j_ideal,k_ideal,l_ideal,11));
+fprintf('Power loading, W/P, para voo em fixed wing = %.4f N/W\n',1/config(i_ideal,j_ideal,k_ideal,l_ideal,12));
+fprintf('Power necessário em fixed wing = %.4f W\n',config(i_ideal,j_ideal,k_ideal,l_ideal,13));
+fprintf('Power loading, W/P, para voo VTOL = %.4f N/W\n',1/config(i_ideal,j_ideal,k_ideal,l_ideal,14));
+fprintf('Power necessário em VTOL = %.4f W\n',config(i_ideal,j_ideal,k_ideal,l_ideal,15));
+fprintf('Energia total gasta no perfil de voo escolhido = %.3f kJ\n',config(i_ideal,j_ideal,k_ideal,l_ideal,16)/1000);
 
 
 %%% GRÁFICO DE DESIGN POINT PARA A CONFIGURAÇÃO IDEAL
